@@ -67,7 +67,12 @@ python experiments/run.py --data data/MVRDC --instances A0-50-C121 A0-50-R121 A0
 ```
 
 * **Resumable.** Each run writes `<out>/runs/<instance>__<alg>__<seed>.json`, and existing runs are skipped. On Colab, write to Google Drive and rerun after a disconnect.
-* **Stored pilot results.** `results/pilot` (Experiment 1) and `results/opt2_pilot` (Experiment 2): 6 instances, 3 seeds, 30 s, stored as `runs.zip` and unpacked automatically by `mvrdc.analysis`.
+* **Stored results** (as `runs.zip`, unpacked automatically by `mvrdc.analysis`):
+  * `results/main`: Experiment 2, 900 runs (30 instances × 6 methods × 5 seeds × 60 s), produced on an Apple MacBook Pro (4 performance cores, Python 3.9) with `--workers 3`;
+  * `results/sens`: sensitivity study, 144 runs (8 Q-learning variants × 6 instances × 3 seeds × 60 s), same machine;
+  * `results/pilot` and `results/opt2_pilot`: 6-instance pilot studies (3 seeds, 30 s) of Experiments 1 and 2.
+
+  Every stored solution was re-checked by an independent feasibility checker.
 
 ## Validation
 
@@ -94,6 +99,8 @@ mvrdc/            instance.py      parser, physical vehicles, distance matrix
                   analysis.py      gaps, Wilcoxon/Friedman tests, convergence, usage
                   published.py     reader for the authors' published routes
 experiments/run.py                 resumable experiment runner (CLI)
+experiments/make_figures.py        regenerates the paper figures from results/main
+paper/                             IEEE paper source (main.tex, refs.bib, figs/)
 notebooks/MVRDC_QVNS.ipynb         Colab notebook
 tests/                             pytest suite
 docs/DEVIATIONS.md                 paper vs. code vs. this implementation

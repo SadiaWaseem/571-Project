@@ -1,0 +1,31 @@
+{
+ "vns": {
+  "time_limit": 60.0,
+  "max_restarts": null
+ },
+ "q": {},
+ "argv": [
+  "experiments/run.py",
+  "--data",
+  "data/MVRDC",
+  "--sizes",
+  "200 customers",
+  "--every",
+  "2",
+  "--algorithms",
+  "ms-vns",
+  "q-vns",
+  "vns-n4",
+  "ops-random",
+  "ops-alns",
+  "ops-q",
+  "--seeds",
+  "1-5",
+  "--time-limit",
+  "60",
+  "--workers",
+  "3",
+  "--out",
+  "results/main"
+ ]
+}
