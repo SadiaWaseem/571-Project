@@ -162,3 +162,41 @@ def test_q_state_space_size():
     for o, k, f, b in itertools.product(Outcome, [0, 50, 500], [0.1, 0.5, 0.9], [0.1, 0.6, 0.95]):
         states.add(q.encode(SearchState(f, k, b, o)))
     assert len(states) == 81
+
+
+# ------------------------------------------------- operator portfolio (Option 2)
+@pytest.mark.parametrize("alg", ["ops-random", "ops-alns", "ops-q"])
+def test_operator_policies_small_optimum(data_root, alg):
+    from mvrdc.operators import operator_shaking
+    path = os.path.join(data_root, "Instances", "10 customers", "A0-10-C121.txt")
+    with operator_shaking():
+        res = solve(load_instance(path), make_selector(alg), VNSConfig(time_limit=3.0), seed=7)
+    assert res.feasible and len(res.selector_stats["picks"]) == 8
+    assert res.best_cost == pytest.approx(3584.14, abs=0.01)
+
+
+def test_every_operator_keeps_feasibility(data_root):
+    from mvrdc.operators import OPS, OperatorShaker
+    inst = load_instance(os.path.join(data_root, "Instances", "200 customers", "A0-50-RC121.txt"))
+    ev = Evaluator(inst)
+    rng = random.Random(5)
+    sol = construct(ev, rng)
+    sh = OperatorShaker(ev)
+    from mvrdc.solution import assign_and_evaluate
+    for h in range(len(OPS)):
+        for _ in range(3):
+            out = sh.shake(sol, h, rng)
+            if out is None:
+                continue
+            new = assign_and_evaluate(ev, out[0], rng)
+            if new is not None:
+                assert check_solution(ev, new) == []
+
+
+def test_operator_shaking_restores_module():
+    from mvrdc import vns
+    from mvrdc.operators import operator_shaking
+    before = (vns.Shaker, vns.NAMES)
+    with operator_shaking():
+        assert len(vns.NAMES) == 8
+    assert (vns.Shaker, vns.NAMES) == before

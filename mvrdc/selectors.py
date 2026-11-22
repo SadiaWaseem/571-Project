@@ -280,6 +280,76 @@ class QLearningSelector(Selector):
         return out
 
 
+class RouletteSelector(Selector):
+    """Adaptive roulette wheel of ALNS (Ropke & Pisinger, 2006).
+
+    Scores sigma = (33, 9, 13) for new best / improved / accepted; weights are
+    updated every ``segment`` steps as w <- (1-r) w + r * score/uses.
+    """
+
+    name = "ALNS-roulette"
+
+    def __init__(self, sigma=(33.0, 9.0, 13.0), reaction: float = 0.1, segment: int = 100):
+        self.sigma, self.reaction, self.segment = sigma, reaction, segment
+
+    def start_run(self, n_h, n_it, rng):
+        super().start_run(n_h, n_it, rng)
+        self.w = [1.0] * n_h
+        self.score = [0.0] * n_h
+        self.used = [0] * n_h
+        self.steps = 0
+        self.weight_history = [list(self.w)]
+
+    def start_restart(self):
+        self.k = 0
+
+    def next(self, s):
+        if self.k >= self.n_h * self.n_it:
+            return None
+        self.k += 1
+        return self.rng.choices(range(self.n_h), weights=self.w)[0]
+
+    def feedback(self, h, outcome, s):
+        super().feedback(h, outcome, s)
+        s1, s2, s3 = self.sigma
+        self.score[h] += {Outcome.NEW_BEST: s1, Outcome.IMPROVED: s2,
+                          Outcome.ACCEPTED: s3}.get(outcome, 0.0)
+        self.used[h] += 1
+        self.steps += 1
+        if self.steps % self.segment == 0:
+            r = self.reaction
+            for j in range(self.n_h):
+                if self.used[j]:
+                    self.w[j] = max(1e-3, (1 - r) * self.w[j] + r * self.score[j] / self.used[j])
+            self.score = [0.0] * self.n_h
+            self.used = [0] * self.n_h
+            self.weight_history.append([round(x, 3) for x in self.w])
+
+    def stats(self):
+        out = super().stats()
+        out["weights"] = [round(x, 3) for x in self.w]
+        out["weight_history"] = self.weight_history
+        return out
+
+
+STEPS_PER_RESTART = 20  # 4 neighborhoods x n_it = 5
+
+
+def with_budget(sel: Selector, steps: int = STEPS_PER_RESTART) -> Selector:
+    """Give a per-step policy exactly ``steps`` shaking steps per restart,
+    whatever the number of actions."""
+    orig = sel.start_run
+
+    def start_run(n_h, n_it, rng):
+        orig(n_h, n_it, rng)
+        sel.n_it = steps / n_h
+    sel.start_run = start_run
+    return sel
+
+
+OPS_ALGORITHMS = ("ops-random", "ops-alns", "ops-q")
+
+
 def make_selector(name: str, **kw) -> Selector:
     name = name.lower()
     if name in ("vns-fixed", "fixed"):
@@ -296,4 +366,11 @@ def make_selector(name: str, **kw) -> Selector:
         return WeightedRandomSelector(QMIX_PILOT, "VNS-static-mix")
     if name in ("q-vns", "q", "qlearning"):
         return QLearningSelector(**kw)
+    if name == "ops-random":
+        return with_budget(WeightedRandomSelector([1.0] * 8, "OPS-random"))
+    if name == "ops-alns":
+        return with_budget(RouletteSelector(**kw))
+    if name == "ops-q":
+        kw.setdefault("features", ("outcome", "stagnation", "phase"))
+        return with_budget(QLearningSelector(**kw))
     raise ValueError(f"unknown selector {name}")

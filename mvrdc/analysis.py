@@ -13,7 +13,8 @@ from .instance import load_instance
 from .published import read_published, to_solution
 from .solution import Evaluator
 
-ALG_ORDER = ["vns-fixed", "ms-vns", "ms-vns-code", "vns-random", "vns-n4", "vns-qmix", "q-vns"]
+ALG_ORDER = ["vns-fixed", "ms-vns", "ms-vns-code", "vns-random", "vns-qmix", "q-vns",
+             "vns-n4", "ops-random", "ops-alns", "ops-q"]
 ALG_LABEL = {
     "vns-fixed": "VNS (fixed order)",
     "ms-vns": "MS-VNS [1]",
@@ -21,7 +22,10 @@ ALG_LABEL = {
     "vns-random": "VNS (random)",
     "vns-n4": "VNS (N4 only)",
     "vns-qmix": "VNS (static Q mix)",
-    "q-vns": "Q-VNS (ours)",
+    "q-vns": "Q-VNS",
+    "ops-random": "N4-ops (random)",
+    "ops-alns": "N4-ops (ALNS roulette)",
+    "ops-q": "N4-ops (Q-learning, ours)",
 }
 
 

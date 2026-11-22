@@ -31,7 +31,7 @@ We read the authors' public C++ code (<https://github.com/Masmoudi-Amine/MVRDC->
 * **B1.** The published 15- and 20-customer route solutions (`Detailed_route_solutions/Solutions 15|20 customers`) are for instances (`A0_15_C121`, …) that are **not** in `Instances/` (which contains `A0-15-C101`, …). They cannot be checked.
 * **B2.** `A0-10-C127`: the solution file uses customers 91–100, but the instance file contains customers 1–10.
 * **B3.** `A0-10-R127`: the reported cost (2528.82) is exactly 1.0 above the cost of the reported routes (2527.82).
-* **B4.** The other 73 published solutions (14 with 10 customers, 60 with 200) pass our feasibility audit, and our objective reproduces the reported costs to within 0.05 (`tests/test_core.py::test_objective_reproduces_published_costs`).
+* **B4.** All 74 checkable published solutions (14 with 10 customers, 60 with 200) pass our feasibility audit, and our objective reproduces the reported costs to within 0.05 for 73 of them (B3 is the exception) (`tests/test_core.py::test_objective_reproduces_published_costs`).
 * **B5.** The "main" best values differ between the online tables. For example, A0-50-C121 has 33,994.50 in Table D1 but 35,618.30 in Table D4.
 * **B6.** The Chen–Shi (2019) MCmpt-VRPTW instances used in Tables 6–8 are not in the repository. Only the authors' solutions are.
 

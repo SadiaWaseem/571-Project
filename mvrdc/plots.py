@@ -12,7 +12,8 @@ from .instance import Instance
 
 COLORS = {"vns-fixed": "#8c8c8c", "ms-vns": "#1f5fa8", "ms-vns-code": "#7aa6d6",
           "vns-random": "#d08c2a", "vns-n4": "#6a9a3a", "vns-qmix": "#9b59b6",
-          "q-vns": "#b3261e"}
+          "q-vns": "#e07a5f", "ops-random": "#c9a227", "ops-alns": "#2a9d8f",
+          "ops-q": "#b3261e"}
 COLUMN_W = 3.5  # inches, IEEE single column
 
 

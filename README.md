@@ -1,4 +1,4 @@
-# Q-VNS: Learned Neighborhood Selection for Multi-Compartment Routing with Reconfigurable Vehicles
+# Adaptive Destroy-and-Repair VNS with Q-Learning Operator Selection for Multi-Compartment Routing with Reconfigurable Vehicles
 
 ISE 571 Heuristic Search Methods, KFUPM, Term Project, Group 6:
 Maha Abd Elhakeem, Sadia Waseem, Saphiah Bajba.
@@ -7,8 +7,9 @@ This repository implements, in Python:
 
 * the **MVRDC** (multi-compartment VRP with time windows, mixed-reconfigurable vehicles and frigoboxes) of Masmoudi et al. (2026) [1];
 * their **multi-start variable neighborhood search (MS-VNS)**, as described in the paper (construction, neighborhoods N1–N4, local search, SelectBestVehicle, Cauchy annealing acceptance, score-based neighborhood re-ordering);
-* **Q-VNS** (our proposal): a tabular Q-learning agent that chooses the shaking neighborhood at every step, in place of the score-based re-ordering;
-* control policies (fixed order, uniform random, the authors' code scoring) so that the effect of *learning* can be isolated;
+* **Experiment 1, Q-VNS:** a tabular Q-learning agent that chooses the shaking *neighborhood* (N1–N4) at every step, in place of the score-based re-ordering of [1];
+* **Experiment 2 (main), N4-ops:** every shaking step is a destroy-and-repair move, and the policy chooses one of 8 operator pairs, (random | worst | related | route removal) × (greedy | regret-2 insertion). It is chosen by Q-learning (**ours**), by the ALNS roulette wheel of Ropke & Pisinger (2006), or at random;
+* control policies (fixed order, random, N4 only, the authors' code scoring) so that the effect of *learning* can be isolated;
 * a resumable experiment runner, statistical analysis and a Colab notebook.
 
 ## Quick start (Colab or local)
@@ -17,7 +18,7 @@ This repository implements, in Python:
 git clone https://github.com/SadiaWaseem/571-Project.git && cd 571-Project
 pip install -r requirements.txt
 bash scripts/fetch_data.sh          # clones the benchmark of [1] into data/MVRDC
-python -m pytest -q                 # 16 tests, ~20 s
+python -m pytest -q                 # 21 tests, ~25 s
 ```
 
 ```python
@@ -34,36 +35,45 @@ The notebook `notebooks/MVRDC_QVNS.ipynb` walks through the data, the validation
 
 ## Algorithms compared
 
-All policies share every component (construction, N1–N4, local search, vehicle assignment, acceptance, cooling). Only the neighborhood-selection policy differs.
+All policies share every component (construction, vehicle assignment, local search, acceptance, cooling). Only the shaking step differs. Per-step policies get 20 shaking steps per restart, the nominal budget of the sweep of [1].
 
-| Label | Policy |
-|---|---|
-| `vns-fixed` | N1 → N2 → N3 → N4, `n_it` = 5 attempts each per restart |
-| `ms-vns` | MS-VNS of [1]: same sweep, order re-sorted every 100 restarts by scores φ = (1, 0, 5) for new best / improvement / annealing acceptance |
-| `ms-vns-code` | Same, with the scoring found in the authors' C++ (φ3 added on every non-improving attempt) |
-| `vns-random` | Uniform random neighborhood, 20 shaking steps per restart |
-| `vns-n4` | Ablation: N4 (remove–insert) only, 20 steps per restart |
-| `vns-qmix` | Ablation: static random mix with the average shares Q-VNS learned in the pilot (an oracle static allocation) |
-| `q-vns` | **Ours.** ε-greedy tabular Q-learning, 20 steps per restart; state = (last outcome, stagnation, search phase, frigobox use), 81 states; rewards (5, 2, 0.5, 0, −1) for new best / improved / accepted / rejected / infeasible |
+| Label | Experiment | Policy |
+|---|---|---|
+| `ms-vns` | 1, 2 | MS-VNS of [1]: sweep N1→N4, 5 attempts each, re-sorted every 100 restarts by scores (1, 0, 5) |
+| `vns-fixed`, `ms-vns-code` | 1 | sweep without re-ordering / with the scoring found in the authors' C++ |
+| `vns-random`, `vns-qmix` | 1 | random neighborhood / static mix equal to Q-VNS's average shares |
+| `q-vns` | 1, 2 | Q-learning over N1–N4 (81 states) |
+| `vns-n4` | 1, 2 | N4 (remove-insert of [1]) only |
+| `ops-random` | 2 | random destroy-repair pair |
+| `ops-alns` | 2 | ALNS roulette wheel, scores (33, 9, 13), reaction 0.1, segments of 100 steps |
+| `ops-q` | 2 | **ours**: Q-learning over 8 destroy-repair pairs; state = (last outcome, stagnation, phase), 27 states |
+
+Q-learning: rewards (5, 2, 0.5, 0, −1) for new best / improved / accepted / rejected / infeasible, α = 0.1, γ = 0.9, ε decays from 0.3 to 0.05.
 
 ## Running the experiments
 
+The notebook runs everything (Sections 5–7). From the command line:
+
 ```bash
-python experiments/run.py --data data/MVRDC --sizes "200 customers" \
-    --algorithms vns-fixed ms-vns vns-random q-vns --seeds 1-10 \
+# Experiment 2 (main): 30 instances (every 2nd), 6 methods, 5 seeds, 60 s  -> ~7.5 h on 2 cores
+python experiments/run.py --data data/MVRDC --sizes "200 customers" --every 2 \
+    --algorithms ms-vns q-vns vns-n4 ops-random ops-alns ops-q --seeds 1-5 \
     --time-limit 60 --workers 2 --out results/main
+
+# Sensitivity: one Q-learning variant (repeat per variant)
+python experiments/run.py --data data/MVRDC --instances A0-50-C121 A0-50-R121 A0-50-RC121 \
+    A1-50-C221 A2-50-R221 A2-50-RC221 --algorithms ops-q --q alpha=0.3 \
+    --label "ops-q@alpha=0.3" --seeds 1-3 --time-limit 60 --workers 2 --out results/sens
 ```
 
-* **Resumable.** Each run writes `results/main/runs/<instance>__<alg>__<seed>.json`, and existing runs are skipped. On Colab, point `--out` to Google Drive and simply rerun the cell after a disconnect.
-* **Splitting the work.** Use `--instances` (glob patterns) to give each group member a share, e.g. `--instances "A0-50-C*"`, `"A0-50-R*" "A0-50-RC*"`, `"A1-*" "A2-*"`. Then merge the `results.csv` files.
-* **Q-learning settings.** For example `--q alpha=0.2 gamma=0.5 eps_start=0.2`. **VNS settings.** For example `--set n_it=5 ls_moves=50`.
-* **Small instances (vs. CPLEX in [1]).** `--sizes "10 customers" "15 customers" "20 customers" --time-limit 10`.
+* **Resumable.** Each run writes `<out>/runs/<instance>__<alg>__<seed>.json`, and existing runs are skipped. On Colab, write to Google Drive and rerun after a disconnect.
+* **Stored pilot results.** `results/pilot` (Experiment 1) and `results/opt2_pilot` (Experiment 2): 6 instances, 3 seeds, 30 s, stored as `runs.zip` and unpacked automatically by `mvrdc.analysis`.
 
 ## Validation
 
-* Our objective reproduces the costs the authors report for their own published solutions. We check the 73 solutions whose instance file is published: all are within 0.05, except one reported value that is exactly 1.0 above the cost of its own routes.
+* Our objective reproduces the costs the authors report for their own published solutions. We check the 74 published solutions whose instance file is also published: 73 are within 0.05, and the remaining one is reported exactly 1.0 above the cost of its own routes.
 * All published routes pass our independent feasibility audit (`solution.check_solution`), and so does every solution our code returns (`RunResult.feasible`).
-* All five algorithms reach the CPLEX optimum of [1] on `A0-10-C121` (3584.14) within 3 s.
+* All policies reach the CPLEX optimum of [1] on `A0-10-C121` (3584.14) within 3 s.
 
 See `docs/DEVIATIONS.md` for where the authors' code differs from their paper, and which version we follow.
 
@@ -77,7 +87,8 @@ mvrdc/            instance.py      parser, physical vehicles, distance matrix
                   construct.py     Algorithm 2
                   neighborhoods.py N1–N4 (shaking)
                   local_search.py  2-opt, relocate, 2-opt*, remove-two-insert-one
-                  selectors.py     neighborhood-selection policies incl. Q-learning
+                  selectors.py     selection policies: sweep/scores of [1], random, ALNS roulette, Q-learning
+                  operators.py     destroy-and-repair operator portfolio (Experiment 2)
                   vns.py           Algorithm 1 driver, RunResult
                   emissions.py     load-dependent CO2 estimate (reported only)
                   analysis.py      gaps, Wilcoxon/Friedman tests, convergence, usage

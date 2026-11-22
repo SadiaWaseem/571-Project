@@ -1,0 +1,7 @@
+{
+ "vns": {
+  "time_limit": 30,
+  "max_restarts": null
+ },
+ "note": "option-2 pilot: 6 instances x 3 seeds x 30 s"
+}
