@@ -18,7 +18,7 @@ This repository implements, in Python:
 git clone https://github.com/SadiaWaseem/571-Project.git && cd 571-Project
 pip install -r requirements.txt
 bash scripts/fetch_data.sh          # clones the benchmark of [1] into data/MVRDC
-python -m pytest -q                 # 21 tests, ~25 s
+python -m pytest -q                 # 22 tests, ~30 s
 ```
 
 ```python
@@ -97,6 +97,9 @@ mvrdc/            instance.py      parser, physical vehicles, distance matrix
                   vns.py           Algorithm 1 driver, RunResult
                   emissions.py     load-dependent CO2 estimate (reported only)
                   analysis.py      gaps, Wilcoxon/Friedman tests, convergence, usage
+                  visuals.py       instance gallery, time-window schedule, solution anatomy, heat map,
+                                   performance profile, critical-difference diagram, radar,
+                                   learning dynamics, interactive explorer
                   published.py     reader for the authors' published routes
 experiments/run.py                 resumable experiment runner (CLI)
 experiments/make_figures.py        regenerates the paper figures from results/main

@@ -200,3 +200,27 @@ def test_operator_shaking_restores_module():
     with operator_shaking():
         assert len(vns.NAMES) == 8
     assert (vns.Shaker, vns.NAMES) == before
+
+
+# ------------------------------------------------------------------ visuals
+def test_visuals_render(data_root):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from mvrdc import analysis as A, visuals as Vz
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    main = os.path.join(root, "results", "main")
+    if not (os.path.isdir(os.path.join(main, "runs")) or os.path.exists(os.path.join(main, "runs.zip"))):
+        pytest.skip("stored results not available")
+    refs = A.published_references(data_root)
+    df = A.add_gaps(A.load_results(main), refs)
+    Vz.plot_gap_heatmap(df); Vz.plot_performance_profile(df)
+    ranks, cd = Vz.plot_cd_diagram(df)
+    assert cd > 0 and len(ranks) == 6
+    run = A.load_runs(main, "A0-50-C121__ops-q__1")[0]
+    inst = load_instance(os.path.join(data_root, "Instances", "200 customers", "A0-50-C121.txt"))
+    ev = Evaluator(inst)
+    sol = Vz.solution_from_run(inst, run, ev)
+    assert check_solution(ev, sol) == [] and abs(sol.cost - run["best_cost"]) < 1e-3
+    Vz.plot_solution_anatomy(inst, sol, ev); Vz.plot_tw_gantt(inst, sol.routes[0])
+    plt.close("all")
